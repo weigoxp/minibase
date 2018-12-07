@@ -6,6 +6,10 @@
  */
 
 #include "btleaf_page.h"
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_STRING 20
 
 const char* BTLeafErrorMsgs[] = {
 // OK,
@@ -41,22 +45,18 @@ Status BTLeafPage::insertRec(const void *key,
                               RID dataRid,
                               RID& rid)
 {
-  /*Status SortedPage::insertRecord (AttrType key_type,
-                                 char * recPtr,
-                                 int recLen,
-                                 RID& rid) */
-    //get_type returns type LEAF, it's sorted_page function.
-    nodetype ndtype = get_type();
-    // make entry
-    KeyDataEntry *keydataentry;
-    Datatype datatype;
-    datatype.rid = dataRid;
-    int *pentry_len;
+    Status status; 
+    KeyDataEntry key_data_entry;
+    Datatype data;
+    data.rid = dataRid;
+    int entryLength;
 
-    make_entry(keydataentry, key_type, key, ndtype, datatype, pentry_len);
+    make_entry(&key_data_entry, key_type, key, LEAF, data, &entryLength);  // header file :bt.h, definition file: key.C
+//cout<<"\n entryLength="<<entryLength;
+    status = SortedPage::insertRecord (key_type, (char *) &key_data_entry, entryLength, rid);
+    if (status != OK)    return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
 
-    return SortedPage::insertRecord(key_type,(char*)key,*pentry_len,rid);
-
+  return OK;
 }
 
 /*
@@ -74,7 +74,25 @@ Status BTLeafPage::get_data_rid(void *key,
                                 AttrType key_type,
                                 RID & dataRid)
 {
-  // binary search? how?
+    Status status;
+    RID currentRid, currentDataRid;
+    Keytype currentKey;
+    int comparedValue;
+
+    status = get_first(currentRid, &currentKey, currentDataRid);
+    if ( status != OK )   return status;    
+
+    comparedValue = keyCompare(key, &currentKey, key_type);
+    while(comparedValue!=0 && status==OK)
+	{
+	status = get_next(currentRid, &currentKey, currentDataRid);
+	comparedValue = keyCompare(key, &currentKey, key_type);
+	}
+
+    if(comparedValue!=0) return RECNOTFOUND;
+	
+    dataRid.pageNo = currentDataRid.pageNo;
+    dataRid.slotNo = currentDataRid.slotNo;	
 
   return OK;
 }
@@ -95,14 +113,74 @@ Status BTLeafPage::get_first (RID& rid,
                               void *key,
                               RID & dataRid)
 { 
-  // put your code here
+
+	bool empty = HFPage::empty();
+    if (empty)
+        return NOMORERECS;
+
+	slot_t *currSlot = this->slot;
+	int i=0, offset, length, keySize;
+	while(currSlot->offset==-1)
+	{
+		currSlot = (slot_t*)(data+i*sizeof(slot_t));
+		i++;
+	}
+	rid.slotNo = i;
+	rid.pageNo = curPage; 
+
+	offset = currSlot->offset;
+	length = currSlot->length;
+
+	keySize = length - sizeof(RID);
+	if(keySize == sizeof(int))
+	{
+		memcpy(key,data+offset,sizeof(int));
+		memcpy(&dataRid,data+offset+keySize,sizeof(RID));
+	}
+	else
+	{
+		memcpy(key,data+offset,MAX_STRING);
+		memcpy(&dataRid,data+offset+MAX_STRING,sizeof(RID));
+	}
   return OK;
 }
 
 Status BTLeafPage::get_next (RID& rid,
                              void *key,
                              RID & dataRid)
-{
-  // put your code here
+{	 
+	int  offset, length, keyLength, curSlotNum = rid.slotNo;
+	slot_t *nextSlot;
+	RID nextRid;
+
+	if(curSlotNum+1 > this->slotCnt)  return NOMORERECS;
+	
+	nextSlot = (slot_t*)(data + curSlotNum*sizeof(slot_t));
+	if(nextSlot->offset==-1) 
+	{
+		nextSlot = (slot_t*)(data + (curSlotNum+1)*sizeof(slot_t));
+		curSlotNum++;
+	}
+
+	
+	offset = nextSlot->offset;
+	length = nextSlot->length;
+
+	nextRid.pageNo = rid.pageNo;
+	nextRid.slotNo = curSlotNum+1;
+	rid = nextRid;
+
+
+	keyLength = length - sizeof(RID);
+	if(keyLength == sizeof(int))
+	{
+		memcpy(key,data+offset,sizeof(int));
+		memcpy(&dataRid,data+offset+sizeof(int),sizeof(RID));
+	} 
+	else
+	{
+		memcpy(key,data+offset,MAX_STRING);
+		memcpy(&dataRid,data+offset+MAX_STRING,sizeof(RID));
+	}
   return OK;
 }

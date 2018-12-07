@@ -62,14 +62,14 @@ public:
 
     ~BufMgr();           // Flush all valid dirty pages to disk
 
-    Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage);
+    Status pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage=false);
         // Check if this page is in buffer pool, otherwise
         // find a frame for this page, read in and pin it.
         // also write out the old page if it's dirty before reading
         // if emptyPage==TRUE, then actually no read is done to bring
         // the page
 
-    Status unpinPage(PageId globalPageId_in_a_DB, int dirty, int hate);
+    Status unpinPage(PageId globalPageId_in_a_DB, int dirty=false, int hate=false);
         // hate should be TRUE if the page is hated and FALSE otherwise
         // if pincount>0, decrement it and if it becomes zero,
         // put it in a group of replacement candidates.

@@ -11,6 +11,8 @@
 
 #include "bt.h"
 
+#define MAX_STRING 20
+
 /*
  * See bt.h for more comments on the functions defined below.
  */
@@ -28,9 +30,9 @@ int keyCompare(const void *key1, const void *key2, AttrType t)
   if(t==attrInteger){
       int *key11 = (int*) key1;
       int *key22 = (int*) key2;
-      if(key11< key22) 
+      if(*key11< *key22) 
           return -1;
-      else if(key11> key22)
+      else if(*key11> *key22)
           return  1;
       else 
           return 0;
@@ -68,9 +70,9 @@ void make_entry(KeyDataEntry *target,
     if(ndtype==LEAF)
         datalen=sizeof(RID);
   // cpy key 
-    memcpy(target,key,keylen);
+    memcpy((char *)target,key,keylen);
   // cpy data
-    memcpy(target+keylen,&data, datalen);
+    memcpy((char*)target+keylen,&data, datalen);
 
     *pentry_len = datalen+keylen;
 }
@@ -85,38 +87,32 @@ void get_key_data(void *targetkey, Datatype *targetdata,
                   KeyDataEntry *psource, int entry_len, nodetype ndtype)
 {
    //get data len first
-    int datalen =0;
+    int datalen =0; 
     if(ndtype==INDEX)
         datalen=sizeof(PageId);
 
-    if(ndtype==LEAF)
+    else if(ndtype==LEAF)
         datalen=sizeof(RID);
-
 
     // key len;
     int keylen = entry_len - datalen;
-
+ 
     //cpy key and data
-    memcpy(targetkey,psource,keylen);
-    memcpy(targetdata,psource+keylen,datalen);
-
+    memcpy(targetkey, &psource->key,keylen);
+    memcpy((char*)targetdata, &psource->data,datalen);
 }
+
 /*
  * get_key_length: return key length in given key_type
  */
 int get_key_length(const void *key, const AttrType key_type)
 {
- // put your code here
-    if(key_type == attrInteger)
-        return sizeof(key);
+	if(key_type==attrInteger) return sizeof(int);
 
-    else if(key_type == attrString)
-        return strlen((char*) key);
+	else if(key_type==attrString)  return MAX_STRING;
 
-    else 
-        return -1;
 }
- 
+  
 /*
  * get_key_data_length: return (key+data) length in given key_type
  */   
@@ -132,5 +128,4 @@ int get_key_data_length(const void *key, const AttrType key_type,
         return len+sizeof(RID);
 
     return -1;
- 
 }

@@ -8,15 +8,18 @@
  
 #ifndef _BTREEFILESCAN_H
 #define _BTREEFILESCAN_H
-
 #include "btfile.h"
+#include "bt.h"
 
 // errors from this class should be defined in btfile.h
+class BTreeFile;
 
 class BTreeFileScan : public IndexFileScan {
 public:
     friend class BTreeFile;
 
+    BTreeFileScan(BTreeFile* file, const void *lo_key,
+                         const void *hi_key, AttrType keyType);
     // get the next record
     Status get_next(RID & rid, void* keyptr);
 
@@ -27,7 +30,24 @@ public:
 
     // destructor
     ~BTreeFileScan();
+    //get firstleafpage
+    Status getLowkeyLeafPage();
+
 private:
+    
+	bool deleted;
+	const void *lowkey;
+	const void *highkey;
+    BTreeFile *file;
+
+    bool lowkeyisnull;
+    BTLeafPage *curleaf;
+    BTLeafPage *firstleafpage;
+
+    PageId firstleafpageID;
+    RID curleafRid;
+	AttrType keyType;
+
 
 };
 

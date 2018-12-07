@@ -137,7 +137,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
 	     if(iReplace==-1) iReplace = i;
 	     else if (bufDescr[iReplace].hate > bufDescr[i].hate)  iReplace = i;	    
 	    }
-	}
+	} 
 
   if(iReplace==-1){// no hated ones exist
     // from the loved pages 
@@ -145,7 +145,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
         if (bufDescr[i].love > 0 && bufDescr[i].pin_count == 0) {
 	      if(iReplace==-1) iReplace = i;
 	      else if (bufDescr[iReplace].love < bufDescr[i].love)  iReplace = i;	    
-	    }
+	    } 
 	}  
    } 
      
@@ -199,7 +199,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
 //*************************************************************
 //** This is the implementation of unpinPage
 //************************************************************
-Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE){
+Status BufMgr::unpinPage(PageId page_num, int dirty, int hate ){
 //cout<<"unpinning page"<<page_num<<endl;
     unsigned int i;
     for (i = 0; i < numBuffers; i++) {

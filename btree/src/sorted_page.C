@@ -5,6 +5,9 @@
  * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
  */
 
+#include <vector>
+#include <algorithm>
+
 #include "sorted_page.h"
 #include "btindex_page.h"
 #include "btleaf_page.h"
@@ -33,7 +36,7 @@ const char* SortedPage::Errors[SortedPage::NR_ERRORS] = {
  *    o recLen is the length of the record to be inserted.
  *    o rid is the record id of the record inserted.
  */
-
+ 
 Status SortedPage::insertRecord (AttrType key_type,
                                  char * recPtr,
                                  int recLen,
@@ -45,36 +48,69 @@ Status SortedPage::insertRecord (AttrType key_type,
 	return MINIBASE_FIRST_ERROR(SORTEDPAGE, ATTRNOTFOUND);
 
   status = HFPage::insertRecord(recPtr, recLen, rid);    // insert the record
-  if (status != OK)
-        return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
+  if (status != OK)  return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
 
 
-  //rearrange the slot directory according to ordered key (insertion sort algorithm)
-  int i, j, k;
-  short temp;
-  char *previousData, *newData;
-  for (i = 1 ; i <= slotCnt - 1; i++) {
-    if(slot[i].length!= EMPTY_SLOT && slot[i].length != INVALID_SLOT)
-    {
-          j = i-1;  
- 	  k = i;   
-          while ( j > 0)
-          {
-           if(slot[j].length!= EMPTY_SLOT && slot[j].length != INVALID_SLOT){
-              previousData = data + slot[j].offset;
-              newData = data + slot[k].offset;
-	      if (keyCompare(previousData, newData, key_type) < 0){
-      	          temp          = slot[j].offset;
-      	          slot[j].offset   = slot[k].offset;
-      	          slot[k].offset = temp;
-	          k=j;
-	          }
-              }
-           j--;
-          }
-    }
-  }
-  return OK;
+  int i=0, j=0, offset, length;
+  vector<SlotDataInfo> slotsInfo;
+  slot_t *tmpSlot = this->slot;
+	 
+  while(i < numberOfRecords())
+	{
+		SlotDataInfo slotData;
+		slotData.slotNo = i;
+
+		offset = tmpSlot->offset;
+		length = tmpSlot->length;
+		slotData.slotLength = length;
+		slotData.slotOffset = offset;
+		if(key_type == attrString)
+		{
+			slotData.type = attrString;
+			if(recLen > MAX_KEY_SIZE1)
+			{
+				char *rec = new char[MAX_KEY_SIZE1];
+				memcpy(rec,data+offset,MAX_KEY_SIZE1);
+				slotData.stringData = rec;
+			}
+			else
+			{
+				char *rec = new char[recLen];
+				memcpy(rec,data+offset,recLen);
+				slotData.stringData = rec;
+			}
+		}
+		else
+		{
+			slotData.type = attrInteger;
+			memcpy(slotData.intData,data+offset,sizeof(int));
+		}
+		slotsInfo.push_back(slotData);
+		tmpSlot = (slot_t*)(data+j*sizeof(slot_t));
+
+		i++;
+		j++;
+	}
+	rid.slotNo = this->slotCnt;
+
+	// here we perform the sort
+	std::sort(slotsInfo.begin(),slotsInfo.end());
+
+	tmpSlot =this->slot;
+	i=0;
+	j=0;
+	while(i<(int)slotsInfo.size())
+	{
+		if(tmpSlot->offset==-1) break;
+
+		tmpSlot->offset = slotsInfo.at(i).slotOffset;
+		tmpSlot->length = slotsInfo.at(i).slotLength;
+		i++;
+		tmpSlot = (slot_t*)(data+j*sizeof(slot_t));
+		j++;
+	}
+
+	return OK;
 }
 
 
@@ -94,8 +130,9 @@ int SortedPage::numberOfRecords()
 {
     int totalRec = 0;
     for(int i =0; i<slotCnt; i++){
-        if(slot[i].length != INVALID_SLOT || slot[i].length != EMPTY_SLOT)
+        if(slot[i].offset !=-1)//(slot[i].length != INVALID_SLOT && slot[i].length != EMPTY_SLOT)
             totalRec++;
+        else break;
     }
     return totalRec;
 }

@@ -13,6 +13,8 @@
 #include "index.h"
 #include "btreefilescan.h"
 #include "bt.h"
+#include <vector>
+#include <map>
 
 // Define your error code for B+ tree here
 // enum btErrCodes  {...}
@@ -56,9 +58,54 @@ class BTreeFile: public IndexFile
     //              range scan from lo_key to hi_key
 
     int keysize();
+
+    vector<int> intValues;
+    vector<string> stringValues;
+    map<int, char*> intRecords;
+    map<char*, char*> stringRecords;
+    vector<int> getIntVals()
+    {
+        return intValues;
+    }
+    // vital for starting any operation on the btree
+    PageId get_root()
+    {
+    	return headerPage->pageId;
+    }
+    // vital for pinning, unpinning with buffer manager
+    string get_fileName()
+    {
+    	return this->fileName;
+    }
     
   private:
+  	typedef struct {
+        PageId pageId;
+        AttrType keyType;
+        int keySize;
+        int numLevels;
+    } HeaderPage;
 
+    HeaderPage* headerPage;
+    PageId headerPageId;
+    string fileName;
+
+    HeaderPage* get_header_page();
+
+    bool isRoot(PageId);
+
+    vector<BTLeafPage> leafPages;
+    Status splitIndexPage(BTIndexPage* page, BTIndexPage* left);
+    Status splitLeafPage(BTLeafPage* page, BTLeafPage* other);
+    Status create_parent(BTIndexPage *page,char *left,char *right);
+
+    char* create_key_data_record(const void *key,RID dataRId,int &recLen);
+    char* create_key_index_record(const void *key,PageId pageNum,int &recLen);
+    void insert(PageId &pageNum,const void *key,RID rid,KeyDataEntry *&child,PageId& splitPageId);
+    
+    Status get_leaf_page_for_insertion(const void *key, BTIndexPage *parent,PageId &insertionPage,void *k);
+    short get_page_type(PageId);
+    PageId get_page_no(BTIndexPage *page,const void *key,AttrType type);
 };
 
 #endif

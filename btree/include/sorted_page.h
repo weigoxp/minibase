@@ -13,11 +13,28 @@
  * on how they compare using the key interface from bt.h+key.C.
  */
  
-
 #include "minirel.h"
 #include "page.h"
 #include "hfpage.h"
 #include "bt.h"
+#include <string.h>
+
+struct SlotDataInfo
+{
+	char *stringData;
+	int *intData;
+	AttrType type;
+	int slotNo, slotLength, slotOffset;
+	SlotDataInfo(){ intData = new int[1];}
+
+	bool operator<(const SlotDataInfo &other) const{
+		switch(type){
+			case attrInteger: return *intData < *(other.intData); break;
+			case attrString: return strcmp(stringData,other.stringData) < 0; break;
+			default: return 0; break;
+		}
+	}
+};
 
 
 class SortedPage : public HFPage {
